@@ -231,24 +231,33 @@ export const logout = async (req, res) => {
 
 // Logout from all sessions
 export const logoutAllSessions = async (req, res) => {
+  const { refreshToken } = req.cookies;
+
+  if (!refreshToken) {
+    return res.status(400).json({ message: "No refresh token provided" });
+  }
+
   try {
-    // Find the user
+    console.log("Entered logout all sessions controller");
+    console.log(req.user);
     const user = await User.findOne({ _id: req.user._id });
 
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    // Clear all active sessions for the user
+    // Remove all active sessions
     user.activeSessions = [];
-    user.refreshToken = null; // Clear user-specific refresh token if stored
     await user.save();
-    logger.info(`All active sessions cleared and refresh token removed for user: ${req.user.email}`);
+    logger.info(`All active sessions cleared for user: ${req.user.email}`);
 
     // Blacklist all refresh tokens for this user
-    await UserRefreshToken.updateMany(
-      { userId: req.user._id },
-      { blacklisted: true }
-    );
-    logger.info(`All refresh tokens blacklisted for user: ${req.user.email}`);
+    const tokenEntries = await UserRefreshToken.find({ userId: req.user._id });
+    if (tokenEntries.length > 0) {
+      await UserRefreshToken.updateMany(
+        { userId: req.user._id },
+        { blacklisted: true }
+      );
+      logger.info(`All refresh tokens blacklisted for user: ${req.user.email}`);
+    }
 
     // Clear cookies
     res.clearCookie("accessToken");
