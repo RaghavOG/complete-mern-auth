@@ -14,7 +14,6 @@ import {
   loginUsingPasswordAndOtp
 } from "../controllers/auth.controller.js";
 import { verifyAccessToken } from "../middleware/verifyToken.js";
-import { protectRoute } from "../middleware/protectRoute.js";
 import { otpRateLimiter , passwordLoginRateLimiter } from "../middleware/rateLimiter.js";
 
 // TODO: ADD RATE LIMITER IN THE ROUTES
@@ -47,6 +46,6 @@ router.post("/login-otp", otpLogin);                // Login using OTP ony witho
 // Password management
 router.post("/forgot-password", forgotPassword);    // Request password reset
 router.post("/reset-password", resetPassword);      // Reset password via token
-router.post("/change-password", protectRoute, changePassword); // Change password when logged in
+router.post("/change-password",verifyAccessToken, changePassword); // Change password when logged in
 
 export default router;

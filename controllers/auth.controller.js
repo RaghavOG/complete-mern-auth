@@ -581,10 +581,6 @@ export const forgotPassword = async (req, res) => {
 export const resetPassword = async (req, res) => {
   const { resetToken, newPassword, confirmPassword } = req.body;
 
-  console.log("Reset token: ", resetToken);
-  console.log("New password: ", newPassword);
-  console.log("Confirm password: ", confirmPassword);
-
   try {
     // Check if the token exists and is not used/expired
     const passwordRecord = await Passwords.findOne({ resetToken });
@@ -599,17 +595,16 @@ export const resetPassword = async (req, res) => {
 
     // Validate new password
     const prevPasswords = passwordRecord.prevPasswords.map((entry) => entry.passwordHash);
-    console.log("Previous Passwords:", prevPasswords);
 
     // Check if the new password matches previous passwords
     let isPasswordUsed = false;
     if (prevPasswords.length > 0) {
-      try {
-        isPasswordUsed = await Promise.any(
-          prevPasswords.map(async (prevHash) => bcrypt.compare(newPassword, prevHash))
-        );
-      } catch (err) {
-        isPasswordUsed = false; // No matches found
+      // Check each previous password hash against the new password
+      for (const prevHash of prevPasswords) {
+        if (await bcrypt.compare(newPassword, prevHash)) {
+          isPasswordUsed = true;
+          break;
+        }
       }
     }
 
@@ -641,6 +636,11 @@ export const resetPassword = async (req, res) => {
       passwordHash: passwordRecord.passwordHash, // Save the previous hash
       changedAt: new Date(),
     });
+
+    if (passwordRecord.prevPasswords.length > 5) {
+      passwordRecord.prevPasswords = passwordRecord.prevPasswords.slice(-5); // Keep last 5 entries
+    }
+
     passwordRecord.passwordHash = hashedPassword;
     passwordRecord.used = true; // Mark token as used
     await passwordRecord.save();
@@ -658,43 +658,70 @@ export const changePassword = async (req, res) => {
   const { currentPassword, newPassword } = req.body;
 
   try {
-    const user = await User.findById(req.user._id);
-    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    // Find the user by their ID
 
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Verify the current password
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
     if (!isMatch) {
       logger.warn(`Change password failed: Incorrect current password for user - ${user.email}`);
       return res.status(400).json({ message: 'Incorrect current password' });
     }
 
-    // Fetch the password history
-    const passwordHistory = await Passwords.find({ userId: user._id }).sort({ createdAt: -1 });
-    const prevPasswords = passwordHistory.map(pw => pw.passwordHash);
+    // Fetch the user's password record
+    const passwordRecord = await Passwords.findOne({ userId: user._id });
+    if (!passwordRecord) {
+      return res.status(404).json({ message: 'Password record not found' });
+    }
 
-    // Check if the new password is same as old password or in password history
-    const isPasswordUsed = prevPasswords.includes(newPassword) || 
-                          newPassword.includes(user.username) ||
-                          newPassword.includes(user.name);
+    // Check against previous passwords
+    const prevPasswords = passwordRecord.prevPasswords.map((entry) => entry.passwordHash);
+    let isPasswordUsed = false;
+    if (prevPasswords.length > 0) {
+      for (const prevHash of prevPasswords) {
+        if (await bcrypt.compare(newPassword, prevHash)) {
+          isPasswordUsed = true;
+          break;
+        }
+      }
+    }
 
-    if (isPasswordUsed) {
-      logger.warn(`New password cannot be same as old or contain username or name.`);
-      return res.status(400).json({ message: 'New password cannot be same as old password or contain username or name.' });
+    // Check if the new password contains sensitive user information
+    const containsSensitiveInfo =
+      newPassword.includes(user.username) ||
+      newPassword.includes(user.name);
+
+    if (isPasswordUsed || containsSensitiveInfo) {
+      logger.warn(`New password cannot be same as old or contain username or name for user - ${user.email}`);
+      return res.status(400).json({
+        message: 'New password cannot match old passwords or contain username/name.',
+      });
     }
 
     // Hash the new password
-    const passwordHash = await bcrypt.hash(newPassword, 12);
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
 
-    // Update the password in the User schema
-    user.password = passwordHash;
+    // Update the user's password in the User schema
+    user.password = hashedPassword;
     await user.save();
 
-    // Save the new password to the password history
-    const newPasswordHistory = new Passwords({
-      userId: user._id,
-      passwordHash,
-      prevPasswords: [...prevPasswords, { passwordHash }]
+    // Update the password record in the Passwords schema
+    passwordRecord.prevPasswords.push({
+      passwordHash: passwordRecord.passwordHash, // Save the previous password hash
+      changedAt: new Date(),
     });
+    passwordRecord.passwordHash = hashedPassword; // Update with the new password hash
 
-    await newPasswordHistory.save();
+    // Retain only the last 5 passwords
+    if (passwordRecord.prevPasswords.length > 5) {
+      passwordRecord.prevPasswords = passwordRecord.prevPasswords.slice(-5);
+    }
+
+    await passwordRecord.save();
 
     logger.info(`Password changed successfully for user: ${user.email}`);
     res.status(200).json({ message: 'Password changed successfully' });
