@@ -27,21 +27,21 @@ router.get('/protected', verifyAccessToken, (req, res) => {
 
 // Auth routes
 router.post("/signup", signup);                     // User registration
-router.post("/login", login);    // add rate lii                   // Email/Password login wihtout OTP
+router.post("/login", passwordLoginRateLimiter , login);    // add rate lii                   // Email/Password login wihtout OTP
 router.post("/logout",verifyAccessToken ,logout);       // Logout from current session
 router.post("/logout-all",verifyAccessToken , logoutAllSessions); // Logout from all sessions  // TODO: 
 
-router.post('/loginUsingpasswordandotp', loginUsingPasswordAndOtp); // Login using OTP
+router.post('/loginUsingpasswordandotp',passwordLoginRateLimiter, loginUsingPasswordAndOtp); // Login using OTP
 
 // Email verification
 router.post("/verify-email", verifyEmail);          // Verify user email with token
-router.post("/resend-otp-verification", sendOtp); // Resend verification otp
+router.post("/resend-otp-verification", otpRateLimiter, sendOtp); // Resend verification otp
 
 router.post('/refresh-token', refreshAccessToken);
 
 // OTP-based login
-router.post("/send-otp", sendOtp);                  // Send OTP to email
-router.post("/login-otp", otpLogin);                // Login using OTP ony without password
+router.post("/send-otp", otpRateLimiter, sendOtp);                  // Send OTP to email
+router.post("/login-otp", otpRateLimiter, otpLogin);                // Login using OTP ony without password
 
 // Password management
 router.post("/forgot-password", forgotPassword);    // Request password reset
@@ -49,3 +49,4 @@ router.post("/reset-password", resetPassword);      // Reset password via token
 router.post("/change-password",verifyAccessToken, changePassword); // Change password when logged in
 
 export default router;
+
