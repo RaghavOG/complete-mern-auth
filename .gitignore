@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+
+todos.txt 
+
 .env
 
 bin/

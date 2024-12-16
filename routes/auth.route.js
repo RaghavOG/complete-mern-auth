@@ -30,7 +30,7 @@ router.get('/protected', verifyAccessToken, (req, res) => {
 router.post("/signup", signup);                     // User registration
 router.post("/login", login);    // add rate lii                   // Email/Password login wihtout OTP
 router.post("/logout",verifyAccessToken ,logout);       // Logout from current session
-router.post("/logout-all", logoutAllSessions); // Logout from all sessions
+router.post("/logout-all", logoutAllSessions); // Logout from all sessions  // TODO: 
 
 router.post('/loginUsingpasswordandotp', loginUsingPasswordAndOtp); // Login using OTP
 

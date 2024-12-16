@@ -24,6 +24,7 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  passwordRecord: { type: mongoose.Schema.Types.ObjectId, ref: 'Password' },
   profilePic: {
     type: String,
     default: "https://img.freepik.com/free-vector/businessman-character-avatar-isolated_24877-60111.jpg?t=st=1734246128~exp=1734249728~hmac=929022529bceefc2aa41c6ff3620b5a3efa37489cab55d29e1a5d8846a937ac3&w=740", 
@@ -38,7 +39,7 @@ const userSchema = new mongoose.Schema({
   refreshToken: {
     type: String,
     default: null,
-  },
+  }, //TODO: Remove this field after checking if it is not needed.
   activeSessions: [
     {
       sessionId: String, // Unique ID for the session

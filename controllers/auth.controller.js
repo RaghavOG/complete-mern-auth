@@ -4,7 +4,7 @@ import crypto from 'crypto';
 
 import User from '../models/user.model.js';
 import { EmailVerification } from '../models/emailVerify.model.js';
-import { PasswordReset } from '../models/passwordReset.model.js';
+import { Passwords } from '../models/passwords.model.js';
 import { OTP } from '../models/otp.model.js';
 import { UserRefreshToken } from '../models/UserRefreshToken.model.js';
 
@@ -13,6 +13,7 @@ import { generateOTP, generateAccessToken, generateRefreshToken , setTokenCookie
 import { ENV_VARS } from '../config/envVars.js';
 import logger from "../utils/logger.js";
 import { v4 as uuidv4 } from "uuid"; 
+import mongoose from 'mongoose';
 
 // Signup controller
 export const signup = async (req, res) => {
@@ -48,7 +49,14 @@ export const signup = async (req, res) => {
     });
 
     await user.save();
-    // logger.info(`User registered: ${user.email}`);
+
+    // Save the password hash in the Passwords schema (for password history)
+    const passwordHistory = new Passwords({
+      userId: user._id,
+      passwordHash: hashedPassword,
+      prevPasswords: [], // No previous passwords at signup
+    });
+    await passwordHistory.save();
 
     // Send verification email
     const verificationToken = jwt.sign({ userId: user._id }, ENV_VARS.JWT_SECRET, { expiresIn: '15m' });
@@ -56,6 +64,7 @@ export const signup = async (req, res) => {
 
     await sendEmail(user.email, 'Email Verification', `Click the link to verify your email: ${verificationUrl}`);
 
+    logger.info(`User registered: ${user.email}`);
     return res.status(201).json({ message: "User registered. Please verify your email." });
   } catch (error) {
     logger.error('Signup error: ' + error.message);
@@ -65,6 +74,8 @@ export const signup = async (req, res) => {
 
 // Login controller (email/password)
 export const login = async (req, res) => {
+
+  // FIXME: Add rate limiter for login requests and NEW Access id for each login request
   const { email, password } = req.body;
 
   try {
@@ -255,9 +266,12 @@ export const logoutAllSessions = async (req, res) => {
 export const refreshAccessToken = async (req, res) => {
   const { refreshToken } = req.cookies;
 
+  console.log("Refresh token: ", refreshToken);
+
   if (!refreshToken) return res.status(400).json({ message: "No refresh token provided" });
 
   try {
+    // Check if the token has expired
     if (isTokenExpired(refreshToken, ENV_VARS.JWT_REFRESH_SECRET)) {
       logger.error('Refresh token expired');
       res.clearCookie('accessToken');
@@ -265,23 +279,47 @@ export const refreshAccessToken = async (req, res) => {
       return res.status(401).json({ message: "Refresh token expired. Please log in again." });
     }
 
+    // Decode the refresh token to get user details
     const decoded = jwt.verify(refreshToken, ENV_VARS.JWT_REFRESH_SECRET);
-    const userId = decoded.userId;
 
-    const tokenEntry = await UserRefreshToken.findOne({ userId, refreshToken });
-    if (!tokenEntry || tokenEntry.blacklisted) return res.status(401).json({ message: "Refresh token is blacklisted" });
 
+    const { userId } = decoded;
+
+    
+
+    // Ensure userId is a valid ObjectId when querying MongoDB
+    const userIdObjectId = new mongoose.Types.ObjectId(userId.userId); // Convert to ObjectId
+
+    // Find the existing refresh token in the database
+    const tokenEntry = await UserRefreshToken.findOne({ userId: userIdObjectId, refreshToken });
+    if (!tokenEntry || tokenEntry.blacklisted) {
+      return res.status(401).json({ message: "Refresh token is blacklisted or not found" });
+    }
+
+    // Blacklist the old refresh token (mark it as blacklisted)
+    tokenEntry.blacklisted = true;
+    await tokenEntry.save();
+
+    // Generate new tokens
     const newAccessToken = generateAccessToken(userId);
     const newRefreshToken = generateRefreshToken(userId);
 
-    tokenEntry.refreshToken = newRefreshToken;
-    await tokenEntry.save();
-    // logger.info(`New refresh token stored for user: ${userId}`);
+    // Create a new entry for the new refresh token with the current sessionId
+    const newTokenEntry = new UserRefreshToken({
+      userId: userIdObjectId,
+      sessionId:userId.sessionId,  // Retain the same sessionId or generate a new one if necessary
+      refreshToken: newRefreshToken,
+      ip: req.ip,  // Optionally, save the IP address of the user
+      blacklisted: false  // Mark the new refresh token as not blacklisted
+    });
 
+    // Save the new refresh token entry
+    await newTokenEntry.save();
+
+    // Set the new tokens as cookies
     setTokenCookies(res, newAccessToken, newRefreshToken);
-    // logger.info(`New tokens set as cookies for user: ${userId}`);
 
-    return res.status(200).json({ message: "Tokens refreshed successfully", isAuth: true });
+    return res.status(200).json({ message: "Tokens refreshed successfully", isAuth: true , data:{ accessToken: newAccessToken, refreshToken: newRefreshToken } });
   } catch (error) {
     logger.error('Refresh token error: ' + error.message);
     res.status(401).json({ message: "Invalid or expired refresh token" });
@@ -392,6 +430,18 @@ export const sendOtp = async (req, res) => {
 export const otpLogin = async (req, res) => {
   const { email, otp } = req.body;
 
+  if (!email || !otp) {
+    return res.status(400).json({ message: "Email and OTP are required" });
+  }
+
+  if (otp.length !== 6) {
+    return res.status(400).json({ message: "Invalid OTP" });
+  }
+
+  if(!email.includes('@')){
+    return res.status(400).json({ message: "Invalid Email" });
+  }
+
   try {
     // Find OTP record for this email
     const otpRecord = await EmailVerification.findOne({ email, otp });
@@ -493,49 +543,115 @@ export const forgotPassword = async (req, res) => {
   try {
     const user = await User.findOne({ email });
     if (!user) {
-      logger.warn('Password reset request: User not found - ' + email);
-      return res.status(400).json({ message: "User not found" });
+      return res.status(400).json({ message: 'User not found' });
     }
 
+    // Generate reset token and expiration
     const resetToken = crypto.randomBytes(32).toString('hex');
-    user.passwordResetToken = resetToken;
-    user.passwordResetExpires = Date.now() + 15 * 60 * 1000;  // Token expires in 15 minutes
-    await user.save();
-
     const resetUrl = `${ENV_VARS.FRONTEND_URL}/reset-password/${resetToken}`;
+    const expiresAt = Date.now() + 15 * 60 * 1000; // 15 minutes expiry
+
+    let passwordRecord = await Passwords.findOne({ userId: user._id });
+
+    if (!passwordRecord) {
+      // Create new Passwords document if none exists
+      passwordRecord = new Passwords({
+        userId: user._id,
+        resetToken,
+        expiresAt,
+      });
+    } else {
+      // Update existing Passwords document
+      passwordRecord.resetToken = resetToken;
+      passwordRecord.expiresAt = expiresAt;
+      passwordRecord.used = false; // Reset "used" status for a new request
+    }
+
+    await passwordRecord.save();
     await sendEmail(user.email, 'Password Reset', `Click the link to reset your password: ${resetUrl}`);
 
-    logger.info('Password reset link sent to user: ' + user.email);
-    res.status(200).json({ message: "Password reset link sent to your email" });
+    return res.status(200).json({ message: 'Password reset link sent to your email' });
   } catch (error) {
-    logger.error('Error while requesting password reset: ' + error.message);
-    res.status(500).json({ message: "Server error while requesting password reset" });
+    console.error(error.message);
+    return res.status(500).json({ message: 'Server error while requesting password reset' });
   }
 };
 
 // Reset password controller
 export const resetPassword = async (req, res) => {
-  const { token, password } = req.body;
+  const { resetToken, newPassword, confirmPassword } = req.body;
+
+  console.log("Reset token: ", resetToken);
+  console.log("New password: ", newPassword);
+  console.log("Confirm password: ", confirmPassword);
 
   try {
-    const user = await User.findOne({ passwordResetToken: token });
-    if (!user || user.passwordResetExpires < Date.now()) {
-      logger.warn('Password reset failed: Invalid or expired token');
-      return res.status(400).json({ message: "Invalid or expired token" });
+    // Check if the token exists and is not used/expired
+    const passwordRecord = await Passwords.findOne({ resetToken });
+    if (!passwordRecord || passwordRecord.expiresAt < Date.now() || passwordRecord.used) {
+      return res.status(400).json({ message: 'Invalid or expired reset token' });
     }
 
-    user.password = await bcrypt.hash(password, 12);
-    user.passwordResetToken = undefined;
-    user.passwordResetExpires = undefined;
+    const user = await User.findById(passwordRecord.userId);
+    if (!user) {
+      return res.status(400).json({ message: 'User not found' });
+    }
+
+    // Validate new password
+    const prevPasswords = passwordRecord.prevPasswords.map((entry) => entry.passwordHash);
+    console.log("Previous Passwords:", prevPasswords);
+
+    // Check if the new password matches previous passwords
+    let isPasswordUsed = false;
+    if (prevPasswords.length > 0) {
+      try {
+        isPasswordUsed = await Promise.any(
+          prevPasswords.map(async (prevHash) => bcrypt.compare(newPassword, prevHash))
+        );
+      } catch (err) {
+        isPasswordUsed = false; // No matches found
+      }
+    }
+
+    // Check if the new password contains sensitive user information
+    const containsSensitiveInfo = 
+      newPassword.includes(user.username) || 
+      newPassword.includes(user.name);
+
+    if (isPasswordUsed || containsSensitiveInfo) {
+      return res.status(400).json({
+        message: 'New password cannot match old passwords or contain username/name.',
+      });
+    }
+
+    // Validate password confirmation
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ message: 'Passwords do not match' });
+    }
+
+    // Hash the new password
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
+
+    // Save the new password in the User model
+    user.password = hashedPassword;
     await user.save();
 
-    logger.info('Password reset successfully for user: ' + user.email);
-    res.status(200).json({ message: "Password reset successfully" });
+    // Update the Passwords schema
+    passwordRecord.prevPasswords.push({
+      passwordHash: passwordRecord.passwordHash, // Save the previous hash
+      changedAt: new Date(),
+    });
+    passwordRecord.passwordHash = hashedPassword;
+    passwordRecord.used = true; // Mark token as used
+    await passwordRecord.save();
+
+    return res.status(200).json({ message: 'Password reset successfully' });
   } catch (error) {
-    logger.error('Password reset error: ' + error.message);
-    res.status(500).json({ message: "Server error during password reset" });
+    console.error(error.message);
+    return res.status(500).json({ message: 'Server error while resetting password' });
   }
 };
+
 
 // Change password controller
 export const changePassword = async (req, res) => {
@@ -546,18 +662,45 @@ export const changePassword = async (req, res) => {
     const isMatch = await bcrypt.compare(currentPassword, user.password);
 
     if (!isMatch) {
-      logger.warn('Change password failed: Incorrect current password for user - ' + user.email);
-      return res.status(400).json({ message: "Incorrect current password" });
+      logger.warn(`Change password failed: Incorrect current password for user - ${user.email}`);
+      return res.status(400).json({ message: 'Incorrect current password' });
     }
 
-    user.password = await bcrypt.hash(newPassword, 12);
+    // Fetch the password history
+    const passwordHistory = await Passwords.find({ userId: user._id }).sort({ createdAt: -1 });
+    const prevPasswords = passwordHistory.map(pw => pw.passwordHash);
+
+    // Check if the new password is same as old password or in password history
+    const isPasswordUsed = prevPasswords.includes(newPassword) || 
+                          newPassword.includes(user.username) ||
+                          newPassword.includes(user.name);
+
+    if (isPasswordUsed) {
+      logger.warn(`New password cannot be same as old or contain username or name.`);
+      return res.status(400).json({ message: 'New password cannot be same as old password or contain username or name.' });
+    }
+
+    // Hash the new password
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+
+    // Update the password in the User schema
+    user.password = passwordHash;
     await user.save();
 
-    logger.info('Password changed successfully for user: ' + user.email);
-    res.status(200).json({ message: "Password changed successfully" });
+    // Save the new password to the password history
+    const newPasswordHistory = new Passwords({
+      userId: user._id,
+      passwordHash,
+      prevPasswords: [...prevPasswords, { passwordHash }]
+    });
+
+    await newPasswordHistory.save();
+
+    logger.info(`Password changed successfully for user: ${user.email}`);
+    res.status(200).json({ message: 'Password changed successfully' });
   } catch (error) {
-    logger.error('Change password error: ' + error.message);
-    res.status(500).json({ message: "Server error during password change" });
+    logger.error(`Change password error: ${error.message}`);
+    res.status(500).json({ message: 'Server error during password change' });
   }
 };
 
