@@ -8,7 +8,7 @@ export default cleanEnv(process.env, {
     JWT_SECRET: str() || 'secret',
     JWT_REFRESH_SECRET: str() ||   'refreshsecret',
 	NODE_ENV: str() || 'development',
-    FRONTEND_URL: str() || 'http://localhost:3000',
+    FRONTEND_URL: str() || 'http://localhost:5173',
     CLOUDINARY_NAME: str(),
     CLOUDINARY_API_KEY: str(),
     CLOUDINARY_API_SECRET: str(),
@@ -17,6 +17,7 @@ export default cleanEnv(process.env, {
 });
 
 export const ENV_VARS = {
+    CLIENT_URL: process.env.CLIENT_URL,
 	MONGO_URI: process.env.MONGO_URI,
 	PORT: process.env.PORT || 5000,
 	JWT_SECRET: process.env.JWT_SECRET,

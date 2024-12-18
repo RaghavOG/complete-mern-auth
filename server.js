@@ -14,7 +14,7 @@ const app = express();
 
 // Enable CORS
 app.use(cors({
-    origin: ENV_VARS.CLIENT_URL, // Specify your frontend URL
+    origin: ENV_VARS.FRONTEND_URL, // Specify your frontend URL
     credentials: true
 }));
 
@@ -60,6 +60,7 @@ if (ENV_VARS.NODE_ENV === "production") {
 // Start server
 app.listen(PORT, () => {
     console.log("Server started at http://localhost:" + PORT);
+    console.log("Frontend started at " + ENV_VARS.FRONTEND_URL);
     connectDB().catch(err => {
         console.error("Database connection failed:", err);
     });

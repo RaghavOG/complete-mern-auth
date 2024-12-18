@@ -5,7 +5,6 @@ import crypto from 'crypto';
 import User from '../models/user.model.js';
 import { EmailVerification } from '../models/emailVerify.model.js';
 import { Passwords } from '../models/passwords.model.js';
-import { OTP } from '../models/otp.model.js';
 import { UserRefreshToken } from '../models/UserRefreshToken.model.js';
 
 import { sendEmail } from '../services/emailService.js';
@@ -160,9 +159,9 @@ export const login = async (req, res) => {
 
     // Respond with tokens
     return res.status(200).json({
-      message: "Login successful",
+      message: "Login successful ( with email and password )",
       isAuth: true,
-      data: { accessToken, refreshToken },
+      data: { accessToken, refreshToken , user },
     });
   } catch (error) {
     logger.error("Login error: " + error.message);
@@ -173,25 +172,13 @@ export const login = async (req, res) => {
 
 // Logout controller (current session)
 export const logout = async (req, res) => {
-  const { refreshToken } = req.cookies;
-
-  console.log("Entered logout controller");
-
-  console.log("==============================================")
-  
-  console.log(refreshToken);
-  
-  console.log("==============================================")
+  const { refreshToken } = req.cookies;  
   if (!refreshToken) {
     return res.status(400).json({ message: "No refresh token provided" });
   }
   
   try {
-    console.log("Entered try block");
-    console.log(req.user);
     const user = await User.findOne({ _id: req.user._id });
-    console.log(user);
-    console.log("==============================================")
     if (!user) return res.status(404).json({ message: "User not found" });
 
     // Find and remove the current session
@@ -238,8 +225,6 @@ export const logoutAllSessions = async (req, res) => {
   }
 
   try {
-    console.log("Entered logout all sessions controller");
-    console.log(req.user);
     const user = await User.findOne({ _id: req.user._id });
 
     if (!user) return res.status(404).json({ message: "User not found" });
@@ -275,8 +260,7 @@ export const logoutAllSessions = async (req, res) => {
 export const refreshAccessToken = async (req, res) => {
   const { refreshToken } = req.cookies;
 
-  console.log("Refresh token: ", refreshToken);
-
+  
   if (!refreshToken) return res.status(400).json({ message: "No refresh token provided" });
 
   try {
@@ -327,6 +311,7 @@ export const refreshAccessToken = async (req, res) => {
 
     // Set the new tokens as cookies
     setTokenCookies(res, newAccessToken, newRefreshToken);
+
 
     return res.status(200).json({ message: "Tokens refreshed successfully", isAuth: true , data:{ accessToken: newAccessToken, refreshToken: newRefreshToken } });
   } catch (error) {
@@ -537,7 +522,7 @@ export const otpLogin = async (req, res) => {
     return res.status(200).json({
       message: "Login successful using OTP",
       isAuth: true,
-      data: { accessToken, refreshToken },
+      data: { accessToken, refreshToken , user },
     });
   } catch (error) {
     logger.error("OTP login error: " + error.message);
@@ -586,6 +571,26 @@ export const forgotPassword = async (req, res) => {
   }
 };
 
+
+export const checkResetToken = async (req, res) => {
+  const { resetToken } = req.params;
+
+  try {
+    // Check if token exists and is valid
+    const passwordRecord = await Passwords.findOne({ resetToken });
+
+    if (!passwordRecord || passwordRecord.expiresAt < Date.now() || passwordRecord.used) {
+      return res.status(400).json({ message: 'Invalid or expired reset token' });
+    }
+
+    return res.status(200).json({ message: 'Reset token is valid' });
+  } catch (error) {
+    console.error(error.message);
+    return res.status(500).json({ message: 'Server error while validating reset token' });
+  }
+};
+
+
 // Reset password controller
 export const resetPassword = async (req, res) => {
   const { resetToken, newPassword, confirmPassword } = req.body;
@@ -593,6 +598,7 @@ export const resetPassword = async (req, res) => {
   try {
     // Check if the token exists and is not used/expired
     const passwordRecord = await Passwords.findOne({ resetToken });
+
     if (!passwordRecord || passwordRecord.expiresAt < Date.now() || passwordRecord.used) {
       return res.status(400).json({ message: 'Invalid or expired reset token' });
     }
@@ -742,7 +748,6 @@ export const changePassword = async (req, res) => {
 
 export const loginUsingPasswordAndOtp = async (req, res) => {
   const { email, password } = req.body;
-
   try {
     // Find user by email
     const user = await User.findOne({ email });
