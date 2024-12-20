@@ -17,6 +17,11 @@ const emailVerificationSchema = new mongoose.Schema({
     type: Boolean,
     default: false, // Mark as true after the OTP is successfully used.
   },
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User', // Reference to the User model
+    required: true,
+  },
 });
 
-export const EmailVerification =   mongoose.model("EmailVerification", emailVerificationSchema);
+export const EmailVerification = mongoose.model("EmailVerification", emailVerificationSchema);

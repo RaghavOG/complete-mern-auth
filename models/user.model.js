@@ -18,7 +18,7 @@ const userSchema = new mongoose.Schema({
   phone: {
     type: String,
     required: true,
-    unique: true,
+    // unique: true,
   },
   password: {
     type: String,
@@ -33,13 +33,14 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  
+  emailVerificationToken: {
+    type: String,
+  },
   verificationExpires: {
     type: Date, // Expiry for email verification.
   },
-  refreshToken: {
-    type: String,
-    default: null,
-  }, //TODO: Remove this field after checking if it is not needed.
+  
   activeSessions: [
     {
       sessionId: String, // Unique ID for the session

@@ -40,7 +40,6 @@ async function CloudinaryUpload(file, folder,filename) {
       access_mode: "public",  
     });
 
-    // console.log("File uploaded to Cloudinary successfully:", response);
 
     await fs.unlink(tempFilePath);
 

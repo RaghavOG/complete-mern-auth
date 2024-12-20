@@ -6,7 +6,7 @@ import User from '../models/user.model.js';
 import { EmailVerification } from '../models/emailVerify.model.js';
 import { Passwords } from '../models/passwords.model.js';
 import { UserRefreshToken } from '../models/UserRefreshToken.model.js';
-
+import { CloudinaryUpload } from "../services/cloudinary.js"
 import { sendEmail } from '../services/emailService.js';
 import { generateOTP, generateAccessToken, generateRefreshToken , setTokenCookies , isTokenExpired} from '../utils/tokenUtils.js';
 import { ENV_VARS } from '../config/envVars.js';
@@ -17,6 +17,10 @@ import mongoose from 'mongoose';
 // Signup controller
 export const signup = async (req, res) => {
   const { name, username, email, phone, password, confirmPassword } = req.body;
+
+  if (!req.file) {
+    return res.status(400).json({ message: "Profile picture is required" });
+  }
 
   try {
     // Validate password match
@@ -32,8 +36,23 @@ export const signup = async (req, res) => {
       return res.status(400).json({ message: "User already exists" });
     }
 
+    let profilePicUrl = "https://res.cloudinary.com/du9jzqlpt/image/upload/v1674647316/avatar_drzgxv.jpg";
+    if (req.file) {
+      console.log("Uploading file:", req.file.originalname);
+      const folder = "profile_pictures"; // Folder in Cloudinary
+      const response = await CloudinaryUpload(req.file, folder, username); // Use username as the filename
+      profilePicUrl = response.secure_url; // Get the secure URL from Cloudinary response
+    }
+
     // Hash the password
     const hashedPassword = await bcrypt.hash(password, 12);
+
+    // Generate email verification token
+    const verificationToken = jwt.sign(
+      { userId: email }, 
+      ENV_VARS.JWT_SECRET, 
+      { expiresIn: '15m' }
+    );
 
     // Create new user
     const user = new User({
@@ -42,9 +61,10 @@ export const signup = async (req, res) => {
       email,
       phone,
       password: hashedPassword,
-      profilePic: "default-profile-pic-url",
+      profilePic: profilePicUrl,
       emailVerified: false,
-      verificationExpires: Date.now() + 15 * 60 * 1000,  // Verification link expires in 15 minutes
+      emailVerificationToken: verificationToken, // Store verification token
+      verificationExpires: Date.now() + 15 * 60 * 1000, // Token expiration in 15 minutes
     });
 
     await user.save();
@@ -58,9 +78,7 @@ export const signup = async (req, res) => {
     await passwordHistory.save();
 
     // Send verification email
-    const verificationToken = jwt.sign({ userId: user._id }, ENV_VARS.JWT_SECRET, { expiresIn: '15m' });
     const verificationUrl = `${ENV_VARS.FRONTEND_URL}/verify-email/${verificationToken}`;
-
     await sendEmail(user.email, 'Email Verification', `Click the link to verify your email: ${verificationUrl}`);
 
     logger.info(`User registered: ${user.email}`);
@@ -70,6 +88,7 @@ export const signup = async (req, res) => {
     res.status(500).json({ message: "Server error during signup" });
   }
 };
+
 
 // Login controller (email/password)
 export const login = async (req, res) => {
@@ -324,24 +343,35 @@ export const verifyEmail = async (req, res) => {
   const { token } = req.body;
 
   try {
+    // Decode the token
     const decoded = jwt.verify(token, ENV_VARS.JWT_SECRET);
-    const user = await User.findById(decoded.userId);
 
-    if (!user || user.emailVerified) {
+    // Find the user by email and token
+    const user = await User.findOne({
+      email: decoded.userId,
+      emailVerificationToken: token,
+      verificationExpires: { $gt: Date.now() }, // Ensure token is still valid
+    });
+
+    if (!user) {
       logger.warn('Email verification failed: Invalid or expired token');
       return res.status(400).json({ message: "Invalid or expired token" });
     }
 
+    // Mark the email as verified
     user.emailVerified = true;
+    user.emailVerificationToken = null; // Remove the token after successful verification
+    user.verificationExpires = null; // Clear the expiration date
     await user.save();
 
-    // logger.info('Email verified successfully: ' + user.email);
-    res.status(200).json({ message: "Email verified successfully" });
+    logger.info('Email verified successfully: ' + user.email);
+    return res.status(200).json({ message: "Email verified successfully", data: { emailVerified: user.emailVerified } });
   } catch (error) {
     logger.error('Email verification error: ' + error.message);
-    res.status(400).json({ message: "Invalid or expired token" });
+    return res.status(400).json({ message: "Invalid or expired token" });
   }
 };
+
 
 // Send OTP for login
 export const sendOtp = async (req, res) => {
@@ -367,29 +397,7 @@ export const sendOtp = async (req, res) => {
     const otp = generateOTP();
     const otpExpire = Date.now() + 15 * 60 * 1000;  // OTP expires in 15 minutes
 
-    // Find existing OTP record for this email
-    // const existingOtpRecord = await EmailVerification.findOne({ email, used: false });
-    
-    // if (existingOtpRecord) {
-    //   // Update the existing OTP record with a new OTP and expiration time
-    //   existingOtpRecord.otp = otp;
-    //   existingOtpRecord.expiresAt = new Date(otpExpire);
-    //   existingOtpRecord.used = false; // Make sure it's marked as unused
-    //   await existingOtpRecord.save();
 
-    //   logger.info('OTP updated for user: ' + email);
-    // } else {
-    //   // Create a new OTP record if none exists
-    //   const newOtpRecord = new EmailVerification({
-    //     email,
-    //     otp,
-    //     expiresAt: new Date(otpExpire),
-    //     used: false,
-    //   });
-    //   await newOtpRecord.save();
-
-    //   logger.info('OTP created for user: ' + email);
-    // }
 
 
     const otpRecord = await EmailVerification.findOneAndUpdate(
@@ -398,6 +406,7 @@ export const sendOtp = async (req, res) => {
         otp,
         expiresAt: new Date(otpExpire),
         used: false, // Reset usage
+        user: user._id,
       },
       { upsert: true, new: true } // Create new record if none exists, return updated document
     );
@@ -583,7 +592,11 @@ export const checkResetToken = async (req, res) => {
       return res.status(400).json({ message: 'Invalid or expired reset token' });
     }
 
+    // passwordRecord.used = true;
+    // await passwordRecord.save();
+
     return res.status(200).json({ message: 'Reset token is valid' });
+    // return res.status(200).json({ message: 'Reset token is valid but can be used only one time kindly request a new one' });
   } catch (error) {
     console.error(error.message);
     return res.status(500).json({ message: 'Server error while validating reset token' });
@@ -598,6 +611,10 @@ export const resetPassword = async (req, res) => {
   try {
     // Check if the token exists and is not used/expired
     const passwordRecord = await Passwords.findOne({ resetToken });
+
+    // if (passwordRecord.used) {
+    //   return res.status(400).json({ message: 'Reset token has already been used' });
+    // }
 
     if (!passwordRecord || passwordRecord.expiresAt < Date.now() || passwordRecord.used) {
       return res.status(400).json({ message: 'Invalid or expired reset token' });
@@ -668,83 +685,6 @@ export const resetPassword = async (req, res) => {
 };
 
 
-// Change password controller
-export const changePassword = async (req, res) => {
-  const { currentPassword, newPassword } = req.body;
-
-  try {
-    // Find the user by their ID
-
-    const user = await User.findById(req.user._id);
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    // Verify the current password
-    const isMatch = await bcrypt.compare(currentPassword, user.password);
-    if (!isMatch) {
-      logger.warn(`Change password failed: Incorrect current password for user - ${user.email}`);
-      return res.status(400).json({ message: 'Incorrect current password' });
-    }
-
-    // Fetch the user's password record
-    const passwordRecord = await Passwords.findOne({ userId: user._id });
-    if (!passwordRecord) {
-      return res.status(404).json({ message: 'Password record not found' });
-    }
-
-    // Check against previous passwords
-    const prevPasswords = passwordRecord.prevPasswords.map((entry) => entry.passwordHash);
-    let isPasswordUsed = false;
-    if (prevPasswords.length > 0) {
-      for (const prevHash of prevPasswords) {
-        if (await bcrypt.compare(newPassword, prevHash)) {
-          isPasswordUsed = true;
-          break;
-        }
-      }
-    }
-
-    // Check if the new password contains sensitive user information
-    const containsSensitiveInfo =
-      newPassword.includes(user.username) ||
-      newPassword.includes(user.name);
-
-    if (isPasswordUsed || containsSensitiveInfo) {
-      logger.warn(`New password cannot be same as old or contain username or name for user - ${user.email}`);
-      return res.status(400).json({
-        message: 'New password cannot match old passwords or contain username/name.',
-      });
-    }
-
-    // Hash the new password
-    const hashedPassword = await bcrypt.hash(newPassword, 12);
-
-    // Update the user's password in the User schema
-    user.password = hashedPassword;
-    await user.save();
-
-    // Update the password record in the Passwords schema
-    passwordRecord.prevPasswords.push({
-      passwordHash: passwordRecord.passwordHash, // Save the previous password hash
-      changedAt: new Date(),
-    });
-    passwordRecord.passwordHash = hashedPassword; // Update with the new password hash
-
-    // Retain only the last 5 passwords
-    if (passwordRecord.prevPasswords.length > 5) {
-      passwordRecord.prevPasswords = passwordRecord.prevPasswords.slice(-5);
-    }
-
-    await passwordRecord.save();
-
-    logger.info(`Password changed successfully for user: ${user.email}`);
-    res.status(200).json({ message: 'Password changed successfully' });
-  } catch (error) {
-    logger.error(`Change password error: ${error.message}`);
-    res.status(500).json({ message: 'Server error during password change' });
-  }
-};
 
 export const loginUsingPasswordAndOtp = async (req, res) => {
   const { email, password } = req.body;

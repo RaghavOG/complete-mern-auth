@@ -1,7 +1,0 @@
-express rate limitter for const otp thing
-No account locking for repeated failed login attempts (this is critical to prevent brute force attacks).
-
-https://chatgpt.com/c/675e5e46-2830-8013-938a-59e796a1fa7b
-https://www.youtube.com/watch?v=7P8wVQHFerk&t=6678s
-https://chat.mistral.ai/chat/bc5a820e-755c-404a-af2e-3cbe9bf40b72   
-https://chatgpt.com/c/676015ae-b398-8013-b9e8-482c87783edf

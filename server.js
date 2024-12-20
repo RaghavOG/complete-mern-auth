@@ -28,6 +28,7 @@ const __dirname = path.resolve();
 
 // Middleware
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(helmet());
 
