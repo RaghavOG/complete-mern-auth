@@ -244,8 +244,9 @@ export const updateProfilePic = async (req, res) => {
       // Send the verification email
       await sendEmail(
         user.email,
-        "Email Verification",
-        `Click the link to verify your email: ${verificationUrl}`
+        'Email Verification',
+        'emailVerification',
+        { verificationUrl }
       );
   
       return res.status(200).json({

@@ -79,7 +79,13 @@ export const signup = async (req, res) => {
 
     // Send verification email
     const verificationUrl = `${ENV_VARS.FRONTEND_URL}/verify-email/${verificationToken}`;
-    await sendEmail(user.email, 'Email Verification', `Click the link to verify your email: ${verificationUrl}`);
+
+    await sendEmail(
+      user.email,
+      'Email Verification',
+      'emailVerification',
+      { verificationUrl }
+    );
 
     logger.info(`User registered: ${user.email}`);
     return res.status(201).json({ message: "User registered. Please verify your email." });
@@ -419,7 +425,13 @@ export const sendOtp = async (req, res) => {
 
 
     // Send OTP to the user's email
-    await sendEmail(user.email, 'Login OTP', `Your OTP for login is: ${otp}`);
+    await sendEmail(
+  user.email,
+  'Login OTP',
+  'loginOtp',
+  { otp }
+);
+
 
     res.status(200).json({ message: "OTP sent to your email" });
 
@@ -571,7 +583,13 @@ export const forgotPassword = async (req, res) => {
     }
 
     await passwordRecord.save();
-    await sendEmail(user.email, 'Password Reset', `Click the link to reset your password: ${resetUrl}`);
+
+    await sendEmail(
+  user.email,
+  'Password Reset',
+  'passwordReset',
+  { resetUrl }
+);
 
     return res.status(200).json({ message: 'Password reset link sent to your email' });
   } catch (error) {
