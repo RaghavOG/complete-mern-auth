@@ -17,11 +17,7 @@ import mongoose from 'mongoose';
 // Signup controller
 export const signup = async (req, res) => {
   const { name, username, email, phone, password, confirmPassword } = req.body;
-
-  if (!req.file) {
-    return res.status(400).json({ message: "Profile picture is required" });
-  }
-
+  
   try {
     // Validate password match
     if (password !== confirmPassword) {
