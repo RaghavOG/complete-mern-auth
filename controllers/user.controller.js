@@ -130,7 +130,15 @@ export const changePassword = async (req, res) => {
   
       return res.status(200).json({
         message:"Profile updated successfully.",
-        user,
+        user: {
+          _id: user._id,
+          name: user.name,
+          username: user.username,
+          email: user.email,
+          phone: user.phone,
+          profilePic: user.profilePic,
+          emailVerified: user.emailVerified,
+        },
       });
     } catch (error) {
       logger.error('Profile update error: ' + error.message);
@@ -159,7 +167,15 @@ export const updateProfilePic = async (req, res) => {
   
       await user.save();
   
-      return res.status(200).json({ message: "Profile picture updated successfully", user });
+      return res.status(200).json({ message: "Profile picture updated successfully", user: {
+        _id: user._id,
+        name: user.name,
+        username: user.username,
+        email: user.email,
+        phone: user.phone,
+        profilePic: user.profilePic,
+        emailVerified: user.emailVerified,
+      }, });
     } catch (error) {
       logger.error('Profile picture update error: ' + error.message);
       return res.status(500).json({ message: "Server error during profile picture update" });
@@ -179,7 +195,15 @@ export const updateProfilePic = async (req, res) => {
       user.profilePic = "https://res.cloudinary.com/du9jzqlpt/image/upload/v1674647316/avatar_drzgxv.jpg"; // Default profile picture
       await user.save();
   
-      return res.status(200).json({ message: "Profile picture deleted successfully", user });
+      return res.status(200).json({ message: "Profile picture deleted successfully", user: {
+        _id: user._id,
+        name: user.name,
+        username: user.username,
+        email: user.email,
+        phone: user.phone,
+        profilePic: user.profilePic,
+        emailVerified: user.emailVerified,
+      }, });
     } catch (error) {
       logger.error('Profile picture delete error: ' + error.message);
       return res.status(500).json({ message: "Server error during profile picture delete" });

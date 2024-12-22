@@ -182,7 +182,17 @@ export const login = async (req, res) => {
     return res.status(200).json({
       message: "Login successful ( with email and password )",
       isAuth: true,
-      data: { accessToken, refreshToken , user },
+      data: { accessToken, refreshToken , 
+        user: {
+        _id: user._id,
+        name: user.name,
+        username: user.username,
+        email: user.email,
+        phone: user.phone,
+        profilePic: user.profilePic,
+        emailVerified: user.emailVerified,
+      },
+   },
     });
   } catch (error) {
     logger.error("Login error: " + error.message);
@@ -539,7 +549,16 @@ export const otpLogin = async (req, res) => {
     return res.status(200).json({
       message: "Login successful using OTP",
       isAuth: true,
-      data: { accessToken, refreshToken , user },
+      data: { accessToken, refreshToken , 
+        user: {
+        _id: user._id,
+        name: user.name,
+        username: user.username,
+        email: user.email,
+        phone: user.phone,
+        profilePic: user.profilePic,
+        emailVerified: user.emailVerified,
+      }, },
     });
   } catch (error) {
     logger.error("OTP login error: " + error.message);
@@ -754,7 +773,7 @@ export const loginUsingPasswordAndOtp = async (req, res) => {
     
 
     // Send OTP to email
-    await sendEmail(user.email, 'Login OTP', `Your OTP for login is: ${otp}`);
+    await sendEmail(user.email, 'Login OTP', 'loginOtp', { otp });
     logger.info('OTP sent to user: ' + email);
 
     return res.status(200).json({ message: "OTP sent to your email" });
