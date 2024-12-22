@@ -4,6 +4,7 @@ import path from "path";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
+import chalk from 'chalk';
 
 import authRoutes from "./routes/auth.route.js";
 
@@ -58,11 +59,10 @@ if (ENV_VARS.NODE_ENV === "production") {
     });
 }
 
-// Start server
 app.listen(PORT, () => {
-    console.log("Server started at http://localhost:" + PORT);
-    console.log("Frontend started at " + ENV_VARS.FRONTEND_URL);
+    console.log(chalk.bgWhite('Server started at http://localhost:' + PORT));
+    console.log(chalk.bgYellow.blue('Frontend started at ' + ENV_VARS.FRONTEND_URL));
     connectDB().catch(err => {
-        console.error("Database connection failed:", err);
+        console.error(chalk.bgRed.white('Database connection failed:'), err);
     });
 });
