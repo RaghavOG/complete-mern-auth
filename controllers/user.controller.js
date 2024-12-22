@@ -1,18 +1,15 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import crypto from 'crypto';
 
-import User from '../models/user.model.js';
+import mongoose from 'mongoose';
+import { ENV_VARS } from '../config/envVars.js';
 import { EmailVerification } from '../models/emailVerify.model.js';
 import { Passwords } from '../models/passwords.model.js';
+import User from '../models/user.model.js';
 import { UserRefreshToken } from '../models/UserRefreshToken.model.js';
-import { CloudinaryUpload } from "../services/cloudinary.js"
+import { CloudinaryUpload } from "../services/cloudinary.js";
 import { sendEmail } from '../services/emailService.js';
-import { generateOTP, generateAccessToken, generateRefreshToken , setTokenCookies , isTokenExpired} from '../utils/tokenUtils.js';
-import { ENV_VARS } from '../config/envVars.js';
 import logger from "../utils/logger.js";
-import { v4 as uuidv4 } from "uuid"; 
-import mongoose from 'mongoose';
 
 export const changePassword = async (req, res) => {
     const { currentPassword, newPassword } = req.body;
