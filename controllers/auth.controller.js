@@ -95,7 +95,6 @@ export const signup = async (req, res) => {
 // Login controller (email/password)
 export const login = async (req, res) => {
 
-  // FIXME: Add rate limiter for login requests and NEW Access id for each login request
   const { email, password } = req.body;
 
   try {
@@ -766,7 +765,7 @@ export const loginUsingPasswordAndOtp = async (req, res) => {
 
     await EmailVerification.findOneAndUpdate(
       { email }, // Search by email
-      { otp, expiresAt: new Date(otpExpire), used: false }, // Update fields
+      { otp, expiresAt: new Date(otpExpire), used: false, user: user._id, }, // Update fields
       { upsert: true, new: true } // Insert if not found, return the updated document
     );
     

@@ -278,3 +278,30 @@ export const updateProfilePic = async (req, res) => {
       return res.status(500).json({ message: "Server error while resending verification email" });
     }
   };
+
+  export const profile = async (req, res) => {
+    const userId = req.user._id;
+  
+    try {
+      const user = await User.findById(userId , { password: 0 });
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      return res.status(200).json({ message: "User's Profile", user: {
+        _id: user._id,
+        name: user.name,
+        username: user.username,
+        email: user.email,
+        phone: user.phone,
+        profilePic: user.profilePic,
+        emailVerified: user.emailVerified,
+      }, });
+    }
+
+    catch (error) {
+      logger.error('Profile error: ' + error.message);
+      return res.status(500).json({ message: "Server error during profile fetch" });
+    }
+
+  }

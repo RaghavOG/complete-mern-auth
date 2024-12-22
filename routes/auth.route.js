@@ -17,7 +17,7 @@ import {
 import { verifyAccessToken } from "../middleware/verifyToken.js";
 import { otpRateLimiter , passwordLoginRateLimiter } from "../middleware/rateLimiter.js";
 import upload from "../middleware/multer.js"
-import { changePassword, deleteAccount, deleteProfilePic, resendEmailVerification, updateProfile, updateProfilePic } from "../controllers/user.controller.js";
+import { changePassword, deleteAccount, deleteProfilePic, profile, resendEmailVerification, updateProfile, updateProfilePic } from "../controllers/user.controller.js";
 
 const router = express.Router();
 
@@ -49,6 +49,7 @@ router.get('/validate-reset-token/:resetToken', checkResetToken); // Validate re
 router.post("/reset-password", resetPassword);      // Reset password via token
 
 // USER SPECIFIC ROUTES
+router.get("/profile",verifyAccessToken, profile); // Change password when logged in
 router.post("/change-password",verifyAccessToken, changePassword); // Change password when logged in
 router.put("/update-profile", verifyAccessToken, updateProfile); // Update user profile
 router.put("/update-profile-pic", verifyAccessToken, upload.single("profilePic"), updateProfilePic);
