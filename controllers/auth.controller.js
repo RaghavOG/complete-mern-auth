@@ -92,7 +92,9 @@ export const signup = async (req, res) => {
 };
 
 
-// Login controller (email/password)
+/**
+ * LOGIN USING EMAIL AND PASSWORD ONLY
+ */
 export const login = async (req, res) => {
 
   const { email, password } = req.body;
@@ -199,6 +201,73 @@ export const login = async (req, res) => {
   }
 };
 
+/**
+* LOGIN USING PASSWORD AND OTP  BOTH
+*/
+
+export const loginUsingPasswordAndOtp = async (req, res) => {
+  const { email, password } = req.body;
+  try {
+    // Find user by email
+    const user = await User.findOne({ email });
+    if (!user) {
+      logger.warn('Login request: User not found - ' + email);
+      return res.status(400).json({ message: "User not found" });
+    }
+
+     // Check if the account is locked
+     if (user.lockoutUntil && user.lockoutUntil > Date.now()) {
+      const remainingLockTime = Math.ceil((user.lockoutUntil - Date.now()) / 60000); // Minutes remaining
+      // const remainingTime = Math.ceil((user.lockoutUntil - Date.now()) / 1000);
+      return res.status(403).json({
+        message: `Account is locked. Try again after ${remainingLockTime}  minute(s).`,
+      });
+    }
+
+    // Check password
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      user.failedLoginAttempts += 1;
+
+      // Lock the account if too many failed attempts
+      if (user.failedLoginAttempts >= 5) {
+        user.lockoutUntil = Date.now() + 15 * 60 * 1000; // Lock for 15 minutes
+        logger.warn(`Account locked due to multiple failed attempts: ${email}`);
+      }
+
+      await user.save();
+      return res.status(400).json({ message: "Invalid credentials" });
+    }
+
+    // Reset failed login attempts
+    // user.failedLoginAttempts = 0;
+    // user.lockoutUntil = null;
+    // await user.save();
+
+    // Generate OTP and set expiration
+    const otp = generateOTP();
+    const otpExpire = Date.now() + 15 * 60 * 1000; // OTP expires in 15 minutes
+
+
+
+    await EmailVerification.findOneAndUpdate(
+      { email }, // Search by email
+      { otp, expiresAt: new Date(otpExpire), used: false, user: user._id, }, // Update fields
+      { upsert: true, new: true } // Insert if not found, return the updated document
+    );
+    
+    
+
+    // Send OTP to email
+    await sendEmail(user.email, 'Login OTP', 'loginOtp', { otp });
+    logger.info('OTP sent to user: ' + email);
+
+    return res.status(200).json({ message: "OTP sent to your email" });
+  } catch (error) {
+    logger.error('Login error: ' + error.message);
+    return res.status(500).json({ message: "Server error during login" });
+  }
+};
 
 // Logout controller (current session)
 export const logout = async (req, res) => {
@@ -718,66 +787,3 @@ export const resetPassword = async (req, res) => {
 
 
 
-export const loginUsingPasswordAndOtp = async (req, res) => {
-  const { email, password } = req.body;
-  try {
-    // Find user by email
-    const user = await User.findOne({ email });
-    if (!user) {
-      logger.warn('Login request: User not found - ' + email);
-      return res.status(400).json({ message: "User not found" });
-    }
-
-     // Check if the account is locked
-     if (user.lockoutUntil && user.lockoutUntil > Date.now()) {
-      const remainingLockTime = Math.ceil((user.lockoutUntil - Date.now()) / 60000); // Minutes remaining
-      // const remainingTime = Math.ceil((user.lockoutUntil - Date.now()) / 1000);
-      return res.status(403).json({
-        message: `Account is locked. Try again after ${remainingLockTime}  minute(s).`,
-      });
-    }
-
-    // Check password
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      user.failedLoginAttempts += 1;
-
-      // Lock the account if too many failed attempts
-      if (user.failedLoginAttempts >= 5) {
-        user.lockoutUntil = Date.now() + 15 * 60 * 1000; // Lock for 15 minutes
-        logger.warn(`Account locked due to multiple failed attempts: ${email}`);
-      }
-
-      await user.save();
-      return res.status(400).json({ message: "Invalid credentials" });
-    }
-
-    // Reset failed login attempts
-    // user.failedLoginAttempts = 0;
-    // user.lockoutUntil = null;
-    // await user.save();
-
-    // Generate OTP and set expiration
-    const otp = generateOTP();
-    const otpExpire = Date.now() + 15 * 60 * 1000; // OTP expires in 15 minutes
-
-
-
-    await EmailVerification.findOneAndUpdate(
-      { email }, // Search by email
-      { otp, expiresAt: new Date(otpExpire), used: false, user: user._id, }, // Update fields
-      { upsert: true, new: true } // Insert if not found, return the updated document
-    );
-    
-    
-
-    // Send OTP to email
-    await sendEmail(user.email, 'Login OTP', 'loginOtp', { otp });
-    logger.info('OTP sent to user: ' + email);
-
-    return res.status(200).json({ message: "OTP sent to your email" });
-  } catch (error) {
-    logger.error('Login error: ' + error.message);
-    return res.status(500).json({ message: "Server error during login" });
-  }
-};
