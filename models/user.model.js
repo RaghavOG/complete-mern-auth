@@ -40,6 +40,13 @@ const userSchema = new mongoose.Schema({
   verificationExpires: {
     type: Date, // Expiry for email verification.
   },
+
+  /**
+   * Two-factor authentication fields
+   */
+  twoFASecret: { type: String, select: false }, // Store encrypted secret
+  is2FAEnabled: { type: Boolean, default: false },
+
   
   activeSessions: [
     {

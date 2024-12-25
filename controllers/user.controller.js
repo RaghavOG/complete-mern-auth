@@ -135,6 +135,7 @@ export const changePassword = async (req, res) => {
           phone: user.phone,
           profilePic: user.profilePic,
           emailVerified: user.emailVerified,
+          is2FAEnabled: user.is2FAEnabled,
         },
       });
     } catch (error) {
@@ -172,6 +173,7 @@ export const updateProfilePic = async (req, res) => {
         phone: user.phone,
         profilePic: user.profilePic,
         emailVerified: user.emailVerified,
+        is2FAEnabled: user.is2FAEnabled,
       }, });
     } catch (error) {
       logger.error('Profile picture update error: ' + error.message);
@@ -200,6 +202,7 @@ export const updateProfilePic = async (req, res) => {
         phone: user.phone,
         profilePic: user.profilePic,
         emailVerified: user.emailVerified,
+        is2FAEnabled: user.is2FAEnabled,
       }, });
     } catch (error) {
       logger.error('Profile picture delete error: ' + error.message);
@@ -296,6 +299,8 @@ export const updateProfilePic = async (req, res) => {
         phone: user.phone,
         profilePic: user.profilePic,
         emailVerified: user.emailVerified,
+        is2FAEnabled: user.is2FAEnabled,
+        
       }, });
     }
 

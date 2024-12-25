@@ -13,6 +13,9 @@ import { ENV_VARS } from '../config/envVars.js';
 import logger from "../utils/logger.js";
 import { v4 as uuidv4 } from "uuid"; 
 import mongoose from 'mongoose';
+import speakeasy from 'speakeasy';
+
+
 
 // Signup controller
 export const signup = async (req, res) => {
@@ -192,6 +195,7 @@ export const login = async (req, res) => {
         phone: user.phone,
         profilePic: user.profilePic,
         emailVerified: user.emailVerified,
+        is2FAEnabled: user.is2FAEnabled,
       },
    },
     });
@@ -268,6 +272,130 @@ export const loginUsingPasswordAndOtp = async (req, res) => {
     return res.status(500).json({ message: "Server error during login" });
   }
 };
+
+
+/**
+ * LOGIN USING EMAIL AND PASSWORD WITH 2FA ENABLED
+ */
+export const login2FAEnabled = async (req, res) => {
+
+  const { email, password } = req.body;
+
+  try {
+    // Find user by email
+    const user = await User.findOne({ email });
+    if (!user) return res.status(400).json({ message: "User not found" });
+
+    // Check for account lockout
+    if (user.lockoutUntil && user.lockoutUntil > Date.now()) {
+      const remainingLockTime = Math.ceil((user.lockoutUntil - Date.now()) / 60000); // Minutes remaining
+      const remainingTime = Math.ceil((user.lockoutUntil - Date.now()) / 1000); // Seconds remaining
+      return res.status(403).json({
+        message: `Account is locked. Try again after ${remainingLockTime} minute(s) or ${remainingTime} second(s).`,
+      });
+    }
+
+    // Verify password
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      user.failedLoginAttempts += 1;
+
+      // Lock the account if too many failed attempts
+      if (user.failedLoginAttempts >= 5) {
+        user.lockoutUntil = Date.now() + 15 * 60 * 1000; // Lock for 15 minutes
+        logger.warn(`Account locked due to multiple failed attempts: ${email}`);
+      }
+
+      await user.save();
+      return res.status(400).json({ message: "Invalid credentials" });
+    }
+
+    // Reset failed login attempts and lockout time on successful login
+    user.failedLoginAttempts = 0;
+    user.lockoutUntil = null;
+
+    if (user.is2FAEnabled) {
+      const is2FAValid = speakeasy.totp.verify({
+        secret: user.twoFASecret,
+        encoding: "base32",
+        token: twoFACode,
+      });
+
+      if (!is2FAValid) {
+        return res.status(401).json({ message: "Invalid 2FA code" });
+      }
+    }
+
+    // Generate unique sessionId
+    const sessionId = uuidv4();
+
+    // Add session details
+    const sessionDetails = {
+      sessionId,
+      ip: req.ip,
+      userAgent: req.headers["user-agent"],
+      issuedAt: new Date(),
+    };
+
+    // Maintain a max of 3 active sessions
+    if (user.activeSessions.length >= 3) {
+      user.activeSessions.shift(); // Remove the oldest session
+    }
+    user.activeSessions.push(sessionDetails);
+
+    await user.save();
+
+    // Generate access token
+    const accessToken = generateAccessToken({ userId: user._id, sessionId });
+
+    // Manage refresh token
+    let refreshToken;
+    const existingToken = await UserRefreshToken.findOne({ userId: user._id, sessionId });
+
+    if (existingToken) {
+      // Use the existing refresh token if it's still valid
+      refreshToken = existingToken.refreshToken;
+      // logger.info(`Existing refresh token reused for user: ${email}`);
+    } else {
+      // Generate a new refresh token and store it
+      refreshToken = generateRefreshToken({ userId: user._id, sessionId });
+      const userRefreshToken = new UserRefreshToken({
+        userId: user._id,
+        sessionId,
+        refreshToken,
+        ip: req.ip,
+      });
+      await userRefreshToken.save();
+      // logger.info(`New refresh token stored for user: ${email}`);
+    }
+
+    // Set cookies
+    setTokenCookies(res, accessToken, refreshToken);
+    // logger.info(`Tokens set as cookies for user: ${email}`);
+
+    // Respond with tokens
+    return res.status(200).json({
+      message: "Login successful ( with email and password )",
+      isAuth: true,
+      data: { accessToken, refreshToken , 
+        user: {
+        _id: user._id,
+        name: user.name,
+        username: user.username,
+        email: user.email,
+        phone: user.phone,
+        profilePic: user.profilePic,
+        emailVerified: user.emailVerified,
+        is2FAEnabled: user.is2FAEnabled,
+      },
+   },
+    });
+  } catch (error) {
+    logger.error("Login error: " + error.message);
+    return res.status(500).json({ message: "Server error during login" });
+  }
+};
+
 
 // Logout controller (current session)
 export const logout = async (req, res) => {
@@ -515,6 +643,13 @@ export const sendOtp = async (req, res) => {
   }
 };
 
+
+/**
+ * 
+ * LOGIN USING OTP ONLY
+ * 
+ */
+
 // OTP login controller
 export const otpLogin = async (req, res) => {
   const { email, otp } = req.body;
@@ -626,6 +761,7 @@ export const otpLogin = async (req, res) => {
         phone: user.phone,
         profilePic: user.profilePic,
         emailVerified: user.emailVerified,
+        is2FAEnabled: user.is2FAEnabled,
       }, },
     });
   } catch (error) {
