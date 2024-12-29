@@ -1,0 +1,713 @@
+{
+	"info": {
+		"_postman_id": "5c3f7053-e675-439c-8251-e00f77ac28f6",
+		"name": "Complete-auth",
+		"description": "MERN AUTH COMPLETE ROUTES",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "33836301"
+	},
+	"item": [
+		{
+			"name": "signup",
+			"item": [
+				{
+					"name": "signup form",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "name",
+									"value": "<your_name>",
+									"type": "text"
+								},
+								{
+									"key": "username",
+									"value": "<your_username>",
+									"type": "text"
+								},
+								{
+									"key": "password",
+									"value": "<your_password>",
+									"type": "text"
+								},
+								{
+									"key": "confirmPassword",
+									"value": "<your_password>",
+									"type": "text"
+								},
+								{
+									"key": "email",
+									"value": "<your_email>",
+									"type": "text"
+								},
+								{
+									"key": "phone",
+									"value": "<your_phone>",
+									"type": "text"
+								},
+								{
+									"key": "profilePic",
+									"type": "file",
+									"src": "<path_to_your_profile_pic>"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseAuthUrl}}/signup",
+							"host": [
+								"{{baseAuthUrl}}"
+							],
+							"path": [
+								"signup"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "login",
+			"item": [
+				{
+					"name": "login using password only",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \r\n  \"email\": \"<your_email>\",\r\n   \"password\": \"<your_password>\"\r\n  \r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseAuthUrl}}/login",
+							"host": [
+								"{{baseAuthUrl}}"
+							],
+							"path": [
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "loginUsingpasswordandotp",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \r\n  \"email\": \"<your_email>\",\r\n   \"password\": \"<your_password>\"\r\n  \r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseAuthUrl}}/loginUsingpasswordandotp",
+							"host": [
+								"{{baseAuthUrl}}"
+							],
+							"path": [
+								"loginUsingpasswordandotp"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "enter opt login",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \r\n  \"email\": \"<your_email>\",\r\n   \"otp\": \"<your_otp>\"\r\n  \r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseAuthUrl}}/login-otp",
+							"host": [
+								"{{baseAuthUrl}}"
+							],
+							"path": [
+								"login-otp"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "logout",
+					"request": {
+						"method": "POST",
+						"header": [],
+						
+						"url": {
+							"raw": "{{baseAuthUrl}}/logout",
+							"host": [
+								"{{baseAuthUrl}}"
+							],
+							"path": [
+								"logout"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "logout from all sessions",
+					"request": {
+						"method": "POST",
+						"header": [],
+
+						"url": {
+							"raw": "{{baseAuthUrl}}/logout-all",
+							"host": [
+								"{{baseAuthUrl}}"
+							],
+							"path": [
+								"logout-all"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "user profile",
+			"item": [
+				{
+					"name": "update profile",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"name\": \"<your_name>\",\r\n    \"username\": \"<your_username>\",\r\n     \"phone\":\"<your_phone>\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseAuthUrl}}/update-profile",
+							"host": [
+								"{{baseAuthUrl}}"
+							],
+							"path": [
+								"update-profile"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "change password",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"currentPassword\": \"<your_current_password>\",\r\n  \"newPassword\": \"<your_new_password>\"\r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseAuthUrl}}/change-password",
+							"host": [
+								"{{baseAuthUrl}}"
+							],
+							"path": [
+								"change-password"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "update profilePic",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "profilePic",
+									"type": "file",
+									"src": "<path_to_your_profile_pic>"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseAuthUrl}}/update-profile-pic",
+							"host": [
+								"{{baseAuthUrl}}"
+							],
+							"path": [
+								"update-profile-pic"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "delete profile pic",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+					
+						"url": {
+							"raw": "{{baseAuthUrl}}/delete-profile-pic",
+							"host": [
+								"{{baseAuthUrl}}"
+							],
+							"path": [
+								"delete-profile-pic"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "delete accound",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+					
+						"url": {
+							"raw": "{{baseAuthUrl}}/delete-account",
+							"host": [
+								"{{baseAuthUrl}}"
+							],
+							"path": [
+								"delete-account"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "2fa",
+			"item": [
+				{
+					"name": "setup 2fa",
+					"request": {
+						"method": "POST",
+						"header": [],
+					
+						"url": {
+							"raw": "{{baseAuthUrl}}/2fa/setup",
+							"host": [
+								"{{baseAuthUrl}}"
+							],
+							"path": [
+								"2fa",
+								"setup"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "verify-2fa",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"twoFACode\": \"<your_2fa_code>\"\r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseAuthUrl}}/2fa/verify",
+							"host": [
+								"{{baseAuthUrl}}"
+							],
+							"path": [
+								"2fa",
+								"verify"
+							]
+						}
+					},
+					"response": []
+				},
+				
+				{
+					"name": "disable 2fa",
+					"request": {
+						"method": "POST",
+						"header": [],
+						
+						"url": {
+							"raw": "{{baseAuthUrl}}/2fa/disable",
+							"host": [
+								"{{baseAuthUrl}}"
+							],
+							"path": [
+								"2fa",
+								"disable"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "login using 2fa",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"email\": \"<your_email>\",\r\n   \"password\": \"<your_password>\",\r\n  \"twoFACode\": \"<your_2fa_code>\"\r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseAuthUrl}}/loginUsing2FAEnabled",
+							"host": [
+								"{{baseAuthUrl}}"
+							],
+							"path": [
+								"loginUsing2FAEnabled"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "verify credentials",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"email\": \"<your_email>\",\r\n   \"password\": \"<your_password>\"\r\n\r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseAuthUrl}}/verify-credentials",
+							"host": [
+								"{{baseAuthUrl}}"
+							],
+							"path": [
+								"verify-credentials"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "verify 2fa in login",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "<your_token>",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"twoFACode\": \"<your_2fa_code>\"\r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseAuthUrl}}/verify-2fa",
+							"host": [
+								"{{baseAuthUrl}}"
+							],
+							"path": [
+								"verify-2fa"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "utils",
+			"item": [
+				{
+					"name": "verify-email",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"token\": \"<your_token>\"\r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseAuthUrl}}/verify-email",
+							"host": [
+								"{{baseAuthUrl}}"
+							],
+							"path": [
+								"verify-email"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "send otp",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \r\n  \"email\": \"<your_email>\"\r\n   \r\n  \r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseAuthUrl}}/send-otp",
+							"host": [
+								"{{baseAuthUrl}}"
+							],
+							"path": [
+								"send-otp"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "resend otp",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \r\n  \"email\": \"<your_email>\"\r\n   \r\n  \r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseAuthUrl}}/resend-otp-verification",
+							"host": [
+								"{{baseAuthUrl}}"
+							],
+							"path": [
+								"resend-otp-verification"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "resend email",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \r\n  \"email\": \"<your_email>\"\r\n   \r\n  \r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseAuthUrl}}/resend-email-verification",
+							"host": [
+								"{{baseAuthUrl}}"
+							],
+							"path": [
+								"resend-email-verification"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "general",
+			"item": [
+				{
+					"name": "test",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:7000",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "7000"
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "protected route access",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \r\n  \"email\": \"<your_email>\",\r\n   \"password\": \"<your_password>\"\r\n  \r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseAuthUrl}}/protected",
+							"host": [
+								"{{baseAuthUrl}}"
+							],
+							"path": [
+								"protected"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "refresh access token",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \r\n  \"email\": \"<your_email>\",\r\n   \"password\": \"<your_password>\"\r\n  \r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseAuthUrl}}/refresh-token",
+							"host": [
+								"{{baseAuthUrl}}"
+							],
+							"path": [
+								"refresh-token"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Passwords",
+			"item": [
+				{
+					"name": "forget password",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \r\n  \"email\": \"<your_email>\"\r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseAuthUrl}}/forgot-password",
+							"host": [
+								"{{baseAuthUrl}}"
+							],
+							"path": [
+								"forgot-password"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "reset password",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"resetToken\": \"<your_reset_token>\",\r\n  \"newPassword\": \"<your_new_password>\",\r\n  \"confirmPassword\":\"<your_new_password>\"\r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseAuthUrl}}/reset-password",
+							"host": [
+								"{{baseAuthUrl}}"
+							],
+							"path": [
+								"reset-password"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}
