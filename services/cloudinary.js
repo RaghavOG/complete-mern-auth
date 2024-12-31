@@ -50,4 +50,21 @@ async function CloudinaryUpload(file, folder,filename) {
   }
 }
 
-export { CloudinaryUpload };
+
+const deleteProfilePicture = async (profilePicUrl) => {
+  const defaultPicUrl = "https://img.freepik.com/free-vector/businessman-character-avatar-isolated_24877-60111.jpg?t=st=1734246128~exp=1734249728~hmac=929022529bceefc2aa41c6ff3620b5a3efa37489cab55d29e1a5d8846a937ac3&w=740"
+  if (profilePicUrl && profilePicUrl !== defaultPicUrl) {
+      try {
+          const publicId = profilePicUrl.split('/').slice(-2).join('/').split('.')[0]; // Extract publicId
+          await Cloudinary.uploader.destroy(publicId); // Delete image in Cloudinary
+          console.log("Profile picture deleted successfully.");
+      } catch (error) {
+          console.error("Error deleting profile picture:", error.message);
+          throw new Error("Failed to delete profile picture from Cloudinary.");
+      }
+  } else {
+      console.log("No custom profile picture to delete.");
+  }
+};
+
+export { CloudinaryUpload  , deleteProfilePicture };

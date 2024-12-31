@@ -7,7 +7,7 @@ import { EmailVerification } from '../models/emailVerify.model.js';
 import { Passwords } from '../models/passwords.model.js';
 import User from '../models/user.model.js';
 import { UserRefreshToken } from '../models/UserRefreshToken.model.js';
-import { CloudinaryUpload } from "../services/cloudinary.js";
+import { CloudinaryUpload, deleteProfilePicture } from "../services/cloudinary.js";
 import { sendEmail } from '../services/emailService.js';
 import logger from "../utils/logger.js";
 
@@ -162,6 +162,9 @@ export const updateProfilePic = async (req, res) => {
       } else {
         return res.status(400).json({ message: "Profile picture is required" });
       }
+
+      // TODO: Delete the previous profile picture from Cloudinary
+      // await deleteProfilePicture(user.profilePic);
   
       await user.save();
   
@@ -181,7 +184,7 @@ export const updateProfilePic = async (req, res) => {
     }
   };
   
-  // Delete profile picture controller // TODO: check this
+
   export const deleteProfilePic = async (req, res) => {
     const userId = req.user._id;
   
@@ -193,6 +196,9 @@ export const updateProfilePic = async (req, res) => {
   
       user.profilePic = "https://res.cloudinary.com/du9jzqlpt/image/upload/v1674647316/avatar_drzgxv.jpg"; // Default profile picture
       await user.save();
+
+      // TODO: Delete the previous profile picture from Cloudinary
+      // await deleteProfilePicture(user.profilePic);
   
       return res.status(200).json({ message: "Profile picture deleted successfully", user: {
         _id: user._id,
@@ -222,11 +228,16 @@ export const updateProfilePic = async (req, res) => {
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
+
+      // TODO: Delete the previous profile picture from Cloudinary
+      // await deleteProfilePicture(user.profilePic);
   
       await User.findByIdAndDelete(userId).session(session);
       await UserRefreshToken.deleteMany({ userId: userId }).session(session);
       await Passwords.deleteMany({ userId: userId }).session(session);
       await EmailVerification.deleteMany({ userId: userId }).session(session);
+
+
 
       await session.commitTransaction();
       session.endSession();
@@ -243,21 +254,18 @@ export const updateProfilePic = async (req, res) => {
 
   export const resendEmailVerification = async (req, res) => {
     try {
-      const user = req.user; // The user is already attached by the `verifyAccessToken` middleware
+      const user = req.user; 
   
-      // Check if email is already verified
       if (user.emailVerified) {
         return res.status(400).json({ message: "Email is already verified" });
       }
   
-      // Generate a new email verification token
       const emailVerificationToken = jwt.sign(
         { userId: user.email },
         ENV_VARS.JWT_SECRET,
-        { expiresIn: "15m" } // Token expires in 15 minutes
+        { expiresIn: "15m" } 
       );
   
-      // Update the user with the new token and expiration time
       user.emailVerificationToken = emailVerificationToken;
       user.verificationExpires = Date.now() + 15 * 60 * 1000; // Set new expiration time
       await user.save();
