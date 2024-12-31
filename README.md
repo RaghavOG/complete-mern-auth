@@ -10,6 +10,8 @@ The Auth Controller handles user authentication, including signup, login, logout
 - Email Verification
 - Login with OTP
 - Login with Password
+- 2FA authentication
+- setup , disable 2FA
 - Login with OTP and Password
 - Password Management
 - Token Management
